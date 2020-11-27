@@ -14,11 +14,14 @@ import textureImg from "url:./assets/texture.jpg";
 
 const BorderedShaderMaterial = shaderMaterial(
   {
+    uTime: 0,
     uBorderBlur: 0,
     uBorderIntensity: 1,
     uRefractionRatio: 0,
     uRefractionOffset: 0,
     uBorderAlphaFactor: 0,
+    uRandomOffsetFactor: 0,
+    uRandomSpeed: 0,
     uType: 1,
     uTexture: null,
   },
@@ -56,7 +59,7 @@ const Scene = () => {
       max: 10,
     },
     borderAlpha: {
-      value: 0.15,
+      value: 0.12,
       min: 0,
       max: 1,
     },
@@ -72,6 +75,24 @@ const Scene = () => {
       max: 1,
       step: 0.01,
     },
+    rotationSpeed: {
+      value: 0.15,
+      min: 0,
+      max: 1,
+      step: 0.01
+    },
+    randomSpeed: {
+      value: 1.,
+      min: 0,
+      max: 10,
+      step: 0.01,
+    },
+    randomOffsetFactor: {
+      value: 0.15,
+      min: 0,
+      max: 1,
+      step: 0.01
+    }
   });
   const geometry = useMemo(() => {
     const g = new THREE.IcosahedronBufferGeometry(1, 1);
@@ -83,7 +104,6 @@ const Scene = () => {
       const x = (p[i * 9 + 0] + p[i * 9 + 3] + p[i * 9 + 6]) / 3;
       const y = (p[i * 9 + 1] + p[i * 9 + 4] + p[i * 9 + 7]) / 3;
       const z = (p[i * 9 + 2] + p[i * 9 + 5] + p[i * 9 + 8]) / 3;
-      console.log(x, y, z);
       centers.push(x, y, z, x, y, z, x, y, z);
     }
     for (let i = 0; i < len / 3; i++) {
@@ -100,18 +120,25 @@ const Scene = () => {
     return g;
   }, []);
 
-  const materials = useRef<THREE.ShaderMaterial[]>([]);
+  const material = useRef<THREE.ShaderMaterial>();
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
-    materials.current.forEach((material) => {
-      material.uniforms.uBorderBlur.value = settings.borderBlur;
-      material.uniforms.uBorderIntensity.value = settings.borderIntensity;
-      material.uniforms.uBorderAlphaFactor.value = settings.borderAlpha;
-      material.uniforms.uRefractionRatio.value = settings.refractionRatio;
-      material.uniforms.uRefractionOffset.value = settings.refractionOffset;
-    });
-    group.current.rotation.x = t * -0.1;
-    group.current.rotation.z = t * 0.1;
+    material.current.uniforms.uBorderBlur.value = settings.borderBlur;
+    material.current.uniforms.uBorderIntensity.value = settings.borderIntensity;
+    material.current.uniforms.uBorderAlphaFactor.value = settings.borderAlpha;
+    material.current.uniforms.uRefractionRatio.value = settings.refractionRatio;
+    material.current.uniforms.uRefractionOffset.value =
+      settings.refractionOffset;
+    material.current.uniforms.uTime.value = t;
+    material.current.uniforms.uRandomOffsetFactor.value = settings.randomOffsetFactor;
+    material.current.uniforms.uRandomSpeed.value = settings.randomSpeed;
+
+    const angle = t * (settings.rotationSpeed as number);
+    const q = new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(Math.cos(angle), Math.sin(angle), 1).normalize(),
+      angle
+    );
+    group.current.setRotationFromQuaternion(q);
   });
 
   return (
@@ -124,25 +151,11 @@ const Scene = () => {
         <mesh visible={true}>
           <primitive object={geometry} attach="geometry" />
           <borderedShaderMaterial
-            ref={(x: any) => {
-              materials.current[0] = x;
-            }}
+            ref={material}
             attach="material"
             transparent
             uType={0}
             uTexture={texture}
-            uRefractionRatio={0}
-          />
-        </mesh>
-        <mesh visible={true} scale={[1.001, 1.001, 1.001]}>
-          <primitive object={geometry.clone()} attach="geometry" />
-          <borderedShaderMaterial
-            ref={(x: any) => {
-              materials.current[1] = x;
-            }}
-            attach="material"
-            transparent
-            uType={1}
           />
         </mesh>
       </group>
