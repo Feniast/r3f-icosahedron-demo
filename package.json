@@ -1,5 +1,5 @@
 {
-  "name": "r3f-bordered",
+  "name": "r3f-icosahedron",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
@@ -15,6 +15,7 @@
     "@types/react-dom": "^16.9.8",
     "@wry/equality": "^0.2.0",
     "dat.gui": "^0.7.7",
+    "postprocessing": "^6.18.0",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "react-spring": "^8.0.27",

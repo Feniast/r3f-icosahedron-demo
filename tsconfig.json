@@ -16,7 +16,11 @@
     "jsx": "react",
     "noImplicitAny": true,
     "noImplicitThis": true,
-    "strictNullChecks": false
+    "strictNullChecks": false,
+    "baseUrl": "./",
+    "paths": {
+      "*": ["types/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "./types/**/*"]
 }

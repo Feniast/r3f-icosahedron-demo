@@ -4,6 +4,7 @@ varying vec3 vBaryCoord;
 varying vec3 vEyeVector;
 varying vec3 vPos;
 varying vec3 vCenter;
+varying vec3 vLocalCenter;
 
 uniform float uTime;
 uniform float uBorderBlur;
@@ -63,11 +64,10 @@ vec4 renderDiffuse() {
 
   vec4 borderColor = renderBorder();
   
-  vec2 uvOffset = hash22(floor(vec2(diffuse + uTime * 0.1) + vCenter.xy  * uRandomSpeed));
+  vec2 uvOffset = hash22(floor(vec2(diffuse + uTime * 0.1) + vLocalCenter.xy  * uRandomSpeed));
   uvOffset.x = (uvOffset.x - 0.5) * 2.;
   uvOffset.y = (uvOffset.y - 0.5) * 2.; 
   vec2 uv = gl_FragCoord.xy / 1024.;
-  // vec2 uv = (gl_FragCoord.xy - 200.) * 1.2  / 1024.;
   uv += uvOffset * uRandomOffsetFactor;
 
   vec3 refractOffset = refract(vEyeVector, normal, uRefractionRatio);
