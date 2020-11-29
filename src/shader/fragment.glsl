@@ -7,6 +7,8 @@ varying vec3 vCenter;
 varying vec3 vLocalCenter;
 
 uniform float uTime;
+uniform float uEdgeThickness;
+uniform float uEdgeIntensity;
 uniform float uBorderBlur;
 uniform float uBorderIntensity;
 uniform float uBorderAlphaFactor;
@@ -59,7 +61,7 @@ vec4 renderDiffuse() {
   vec3 normal = normalize(cross(dFdx(vPos), dFdy(vPos)));
   float diffuse = clamp(dot(normal, lightPos), 0., 1.);
 
-  float edge = 1.0 - edgeFactor(vBaryCoord, 6.6, 1.5);
+  float edge = 1.0 - edgeFactor(vBaryCoord, uEdgeThickness, uEdgeIntensity);
   vec2 displacement = (vCenter - vPos).xy * edge * 0.3;
 
   vec4 borderColor = renderBorder();
