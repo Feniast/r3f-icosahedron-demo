@@ -106,7 +106,7 @@ void main() {
 
   vUv = uv;
   vBaryCoord = aBaryCoord;
-  vEyeVector = worldPos - cameraPosition;
+  vEyeVector = normalize(worldPos - cameraPosition);
   vPos = (modelViewMatrix * vec4(pos, 1.0)).xyz;
   vCenter = (modelViewMatrix * vec4(aCenter, 1.0)).xyz;
   vLocalCenter = aCenter;

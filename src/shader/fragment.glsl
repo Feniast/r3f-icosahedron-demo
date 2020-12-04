@@ -7,6 +7,8 @@ varying vec3 vCenter;
 varying vec3 vLocalCenter;
 
 uniform float uTime;
+uniform vec2 uResolution;
+uniform vec2 uScale;
 uniform float uEdgeThickness;
 uniform float uEdgeIntensity;
 uniform float uBorderBlur;
@@ -25,6 +27,10 @@ vec2 hash22(vec2 p) {
 	p = fract(p * vec2(5.3983, 5.4427));
   p += dot(p.yx, p.xy +  vec2(21.5351, 14.3137));
 	return fract(vec2(p.x * p.y * 95.4337, p.x * p.y * 97.597));
+}
+
+float fresnel(vec3 eyeVector, vec3 normal) {
+  return pow(1.0 + dot(eyeVector, normal), 3.0);
 }
 
 mat4 rotation3d(vec3 axis, float angle) {
@@ -69,7 +75,7 @@ vec4 renderDiffuse() {
   vec2 uvOffset = hash22(floor(vec2(diffuse + uTime * 0.1) + vLocalCenter.xy  * uRandomSpeed));
   uvOffset.x = (uvOffset.x - 0.5) * 2.;
   uvOffset.y = (uvOffset.y - 0.5) * 2.; 
-  vec2 uv = gl_FragCoord.xy / 1024.;
+  vec2 uv = ((gl_FragCoord.xy - 0.5 * uResolution) * uScale * 0.9 + 0.5 * uResolution) / 1024.;
   uv += uvOffset * uRandomOffsetFactor;
 
   vec3 refractOffset = refract(vEyeVector, normal, uRefractionRatio);
@@ -79,12 +85,17 @@ vec4 renderDiffuse() {
 
   vec4 texColor = texture2D(uTexture, uv);
   vec4 color = texColor;
+  float fresnelColor = fresnel(vEyeVector, normal) * 1.;
+  color.rgb = mix(color.rgb, vec3(1.), fresnelColor);
+
   if (borderColor.a > 0.) {
     color.rgb = borderColor.rgb * borderColor.a + texColor.rgb * (1. - borderColor.a);
     color.a = borderColor.a + texColor.a;
   }
   // return vec4(vec3(diffuse), 1.);
   // return color * max(diffuse, 0.2);
+  // return vec4(normal, 1.);
+  // return vec4(gl_FragCoord.xy / uResolution, 0., 1.);
   return color;
 }
 

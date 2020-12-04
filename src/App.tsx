@@ -4,7 +4,6 @@ import React, {
   useMemo,
   useLayoutEffect,
   useState,
-  useEffect,
 } from "react";
 import { Canvas, extend, useFrame, useThree } from "react-three-fiber";
 import * as THREE from "three";
@@ -34,8 +33,8 @@ const mouse = {
 
 const settings = {
   main: {
-    edgeThickness: 5,
-    edgeIntensity: 1.8,
+    edgeThickness: 4.5,
+    edgeIntensity: 1.0,
     borderBlur: 2.4,
     borderIntensity: 1,
     borderAlpha: 0.06,
@@ -46,15 +45,44 @@ const settings = {
     randomOffsetFactor: 0.15,
   },
   bloom: {
-    intensity: 1,
-    luminanceThreshold: 0.3,
+    intensity: 0.5,
+    luminanceThreshold: 0.4,
     luminanceSmoothing: 0.6,
   },
 };
 
+const BgShaderMaterial = shaderMaterial(
+  {
+    uScale: null,
+    uTexture: null,
+    uResolution: null,
+  },
+  `precision highp float;
+
+varying vec2 vUv;
+
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
+}`,
+  `precision highp float;
+
+uniform vec2 uScale;
+uniform sampler2D uTexture;
+uniform vec2 uResolution;
+varying vec2 vUv;
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / uResolution;
+  // vec2 uv = (vUv - vec2(0.5)) * uScale + vec2(0.5);
+  gl_FragColor = texture2D(uTexture, uv);
+}`
+);
+
 const BorderedShaderMaterial = shaderMaterial(
   {
     uTime: 0,
+    uResolution: null,
     uEdgeThickness: 0,
     uEdgeIntensity: 0,
     uBorderBlur: 0,
@@ -68,6 +96,7 @@ const BorderedShaderMaterial = shaderMaterial(
     uTexture: null,
     uMouse: null,
     uDistortFactor: 0,
+    uScale: null
   },
   vertex,
   fragment
@@ -75,21 +104,34 @@ const BorderedShaderMaterial = shaderMaterial(
 
 extend({
   BorderedShaderMaterial,
+  BgShaderMaterial,
 });
 
 declare global {
   namespace JSX {
     interface IntrinsicElements {
       borderedShaderMaterial: any;
+      bgShaderMaterial: any;
     }
   }
 }
 
 const Scene = () => {
+  const { size, gl, aspect, viewport, scene } = useThree();
   const texture = useTexture(textureImg) as THREE.Texture;
   useLayoutEffect(() => {
     texture.wrapS = texture.wrapT = THREE.MirroredRepeatWrapping;
   }, [texture]);
+  const scale = useMemo(() => {
+    const img = texture.image as HTMLImageElement;
+    const imageAspect = img.naturalWidth / img.naturalHeight;
+    if (imageAspect > aspect) {
+      return new THREE.Vector2(aspect / imageAspect, 1);
+    } else {
+      return new THREE.Vector2(1, imageAspect / aspect);
+    }
+  }, [texture, aspect]);
+
   const group = useRef<THREE.Group>();
 
   const geometry = useMemo(() => {
@@ -118,10 +160,24 @@ const Scene = () => {
     return g;
   }, []);
 
+  const getUVScale = (w: number, h: number) => {
+    const geomDimension = 2;
+    let scale = 1;
+    if (w > h) {
+      scale = w / geomDimension;
+    } else {
+      scale = h / geomDimension;
+    }
+    return new THREE.Vector2(scale, scale);
+  };
+
   const material = useRef<THREE.ShaderMaterial>();
   const angleRef = useRef(0);
   const noiseFactor = useRef(0);
-  useFrame(({ clock, viewport }, delta) => {
+  useFrame(({ clock, viewport, camera, aspect }, delta) => {
+    const h = camera.position.z * Math.tan((camera as THREE.PerspectiveCamera).fov * Math.PI / 180 / 2) * 2;
+    const w = aspect * h;
+    
     const t = clock.getElapsedTime();
     material.current.uniforms.uBorderBlur.value = settings.main.borderBlur;
     material.current.uniforms.uBorderIntensity.value =
@@ -140,6 +196,7 @@ const Scene = () => {
     material.current.uniforms.uRandomOffsetFactor.value =
       settings.main.randomOffsetFactor;
     material.current.uniforms.uRandomSpeed.value = settings.main.randomSpeed;
+    material.current.uniforms.uScale.value = getUVScale(w, h);
 
     const mouseX = (mouse.x - 0.5) * viewport.width;
     const mouseY = -(mouse.y - 0.5) * viewport.height;
@@ -168,10 +225,15 @@ const Scene = () => {
 
   return (
     <>
-      {/* <mesh>
-        <planeBufferGeometry args={[2, 2]} attach="geometry" />
-        <meshBasicMaterial map={texture} attach="material" />
-      </mesh> */}
+      <mesh visible={false} scale={[viewport.width, viewport.height, 1]}>
+        <planeBufferGeometry args={[1, 1]} attach="geometry" />
+        <bgShaderMaterial
+          transparent
+          uTexture={texture}
+          uScale={scale}
+          uResolution={new THREE.Vector2(1024, 1024)}
+        />
+      </mesh>
       <group ref={group}>
         <mesh visible={true}>
           <primitive object={geometry} attach="geometry" />
@@ -181,6 +243,8 @@ const Scene = () => {
             transparent
             uType={0}
             uTexture={texture}
+            uResolution={new THREE.Vector2(size.width, size.height)}
+            uScale={[0, 0]}
           />
         </mesh>
       </group>
